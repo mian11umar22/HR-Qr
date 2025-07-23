@@ -121,11 +121,7 @@ exports.uploadDocxAndConvertToPdf = async (req, res) => {
   try {
     const file = req.file;
     const ext = ".pdf";
-    const outputPath = path.join(
-      __dirname,
-      "../public/uploads",
-      `${uuidv4()}-converted.pdf`
-    );
+    const outputPath = path.join(__dirname, "../public/uploads", `${uuidv4()}-converted.pdf`);
 
     const fileBuffer = fs.readFileSync(file.path);
     libre.convert(fileBuffer, ext, undefined, async (err, done) => {
