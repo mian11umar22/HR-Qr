@@ -10,7 +10,7 @@ const util = require("util");
 const qrcodeReader = require("qrcode-reader");
 const checkQR = require("../utils/qrScanner");
 const unlinkAsync = util.promisify(fs.unlink);
-const PDFMerger = require("pdf-merger-js").default;
+ 
 const fetch = require("node-fetch");
 
 // 1. Generate QR Documents
@@ -190,9 +190,10 @@ exports.mergePdfFiles = async (req, res) => {
   }
 
   try {
+    // Dynamically import pdf-merger-js (ES Module)
+    const { default: PDFMerger } = await import("pdf-merger-js");
     const merger = new PDFMerger();
 
-    // Download and add each file
     for (const url of files) {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Failed to fetch: ${url}`);
@@ -200,7 +201,7 @@ exports.mergePdfFiles = async (req, res) => {
       const tempFilePath = `temp-${Date.now()}-${Math.random()}.pdf`;
       fs.writeFileSync(tempFilePath, buffer);
       await merger.add(tempFilePath);
-      fs.unlinkSync(tempFilePath); // Clean up
+      fs.unlinkSync(tempFilePath); // clean up
     }
 
     const mergedBuffer = await merger.saveAsBuffer();
@@ -213,3 +214,4 @@ exports.mergePdfFiles = async (req, res) => {
     res.status(500).json({ message: "PDF merge failed", error: err.message });
   }
 };
+
