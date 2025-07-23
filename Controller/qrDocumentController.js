@@ -10,7 +10,6 @@ const util = require("util");
 const qrcodeReader = require("qrcode-reader");
 const checkQR = require("../utils/qrScanner");
 const unlinkAsync = util.promisify(fs.unlink);
- 
 const fetch = require("node-fetch");
 
 // 1. Generate QR Documents
@@ -30,7 +29,7 @@ exports.generateQrDocuments = async (req, res) => {
 
     for (let i = 0; i < count; i++) {
       const qrId = uuidv4();
-      const qrUrl = `${req.protocol}://${req.get("host")}/verify/${qrId}`; // Changed to dynamic verification route
+      const qrUrl = `${req.protocol}://${req.get("host")}/verify/${qrId}`;
       const qrCode = await generateQrCode(qrUrl);
 
       const filename = `qr-${qrId}.pdf`;
@@ -77,31 +76,24 @@ exports.uploadScannedDocuments = async (req, res) => {
       return res.status(400).json({ message: "No files uploaded" });
     }
 
-    const qrDocs = await QRDocument.find({ status: "not_uploaded" }).limit(
-      files.length
-    );
-
-    if (qrDocs.length < files.length) {
-      return res
-        .status(400)
-        .json({ message: "More files than available QR IDs" });
-    }
-
     const updatedDocs = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const doc = qrDocs[i];
+    for (const file of files) {
+      const match = file.filename.match(/^qr-(.*)\.pdf$/);
+      if (!match) continue;
+
+      const qrId = match[1];
+      const doc = await QRDocument.findOne({ qrId });
+      if (!doc) continue;
 
       const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
         file.filename
       }`;
-
       doc.uploadedFileUrl = fileUrl;
       doc.status = "uploaded";
       await doc.save();
 
-      updatedDocs.push({ qrId: doc.qrId, fileUrl });
+      updatedDocs.push({ qrId, fileUrl });
     }
 
     res.json({
@@ -121,24 +113,16 @@ exports.verifyQrDocument = async (req, res) => {
   try {
     const qrDoc = await QRDocument.findOne({ qrId });
 
-    if (!qrDoc) {
-      console.error(`QRDocument not found for qrId: ${qrId}`);
-      return res.status(404).send("QR Document not found");
+    if (!qrDoc || !qrDoc.uploadedFileUrl) {
+      return res.status(404).send("Document not found or not uploaded yet.");
     }
 
-    if (!qrDoc.uploadedFileUrl) {
-      console.error(`No uploaded file URL for qrId: ${qrId}`);
-      return res.status(404).send("Document not uploaded yet");
-    }
-
-    console.log(`Redirecting to: ${qrDoc.uploadedFileUrl}`);
     res.redirect(qrDoc.uploadedFileUrl);
   } catch (err) {
     console.error("Verify error:", err);
     res.status(500).send("Internal server error.");
   }
 };
-
 
 // 4. QR Scan + Redirect from uploaded scanned file
 exports.uploadAndScanQr = async (req, res) => {
@@ -165,23 +149,7 @@ exports.uploadAndScanQr = async (req, res) => {
   }
 };
 
-// 5. Redirect for external scanner
-exports.verifyQrDocument = async (req, res) => {
-  const { qrId } = req.params;
-
-  try {
-    const qrDoc = await QRDocument.findOne({ qrId });
-
-    if (!qrDoc || !qrDoc.uploadedFileUrl) {
-      return res.status(404).send("Document not found or not uploaded yet.");
-    }
-
-    res.redirect(qrDoc.uploadedFileUrl);
-  } catch (err) {
-    console.error("Verify error:", err);
-    res.status(500).send("Internal server error.");
-  }
-};
+// 5. Merge PDF files
 exports.mergePdfFiles = async (req, res) => {
   const { files } = req.body;
 
@@ -190,7 +158,6 @@ exports.mergePdfFiles = async (req, res) => {
   }
 
   try {
-    // Dynamically import pdf-merger-js (ES Module)
     const { default: PDFMerger } = await import("pdf-merger-js");
     const merger = new PDFMerger();
 
@@ -201,7 +168,7 @@ exports.mergePdfFiles = async (req, res) => {
       const tempFilePath = `temp-${Date.now()}-${Math.random()}.pdf`;
       fs.writeFileSync(tempFilePath, buffer);
       await merger.add(tempFilePath);
-      fs.unlinkSync(tempFilePath); // clean up
+      fs.unlinkSync(tempFilePath);
     }
 
     const mergedBuffer = await merger.saveAsBuffer();
@@ -214,4 +181,3 @@ exports.mergePdfFiles = async (req, res) => {
     res.status(500).json({ message: "PDF merge failed", error: err.message });
   }
 };
-
