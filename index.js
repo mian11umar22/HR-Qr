@@ -17,7 +17,23 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 app.use("/", qrDocumentRoute);
 app.use("/qrcodes", express.static(path.join(__dirname, "public/uploads")));
-app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    res.setHeader("X-Frame-Options", "ALLOWALL"); // ✅ Allow iframe embedding
+    res.setHeader("Access-Control-Allow-Origin", "*"); // ✅ Allow cross-origin requests
+    next();
+  },
+  express.static(path.join(__dirname, "public/uploads"), {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".pdf")) {
+        res.setHeader("Content-Type", "application/pdf");
+      }
+    },
+  })
+);
+
+
 mongoose
   .connect(process.env.DB_HOST)
   .then(() => console.log("Connected to MongoDB"))

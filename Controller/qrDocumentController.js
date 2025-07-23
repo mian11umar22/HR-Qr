@@ -5,9 +5,7 @@ const puppeteer = require("puppeteer");
 const path = require("path");
 const ejs = require("ejs");
 const fs = require("fs");
-const Jimp = require("jimp");
 const util = require("util");
-const qrcodeReader = require("qrcode-reader");
 const checkQR = require("../utils/qrScanner");
 const unlinkAsync = util.promisify(fs.unlink);
 const fetch = require("node-fetch");
@@ -51,6 +49,8 @@ exports.generateQrDocuments = async (req, res) => {
       fs.writeFileSync(filePath, pdfBuffer);
       pdfPaths.push(fileUrl);
 
+      console.log("Creating QR Document in DB:", { qrId, templateType });
+
       await QRDocument.create({
         qrId,
         templateName: templateType,
@@ -71,7 +71,6 @@ exports.generateQrDocuments = async (req, res) => {
 exports.uploadScannedDocuments = async (req, res) => {
   try {
     const files = req.files;
-
     if (!files || files.length === 0) {
       return res.status(400).json({ message: "No files uploaded" });
     }
@@ -79,12 +78,20 @@ exports.uploadScannedDocuments = async (req, res) => {
     const updatedDocs = [];
 
     for (const file of files) {
-      const match = file.filename.match(/^qr-(.*)\.pdf$/);
-      if (!match) continue;
+      const qrData = await checkQR(file.path, file.mimetype);
+      console.log("QR Data:", qrData);
+      if (!qrData) {
+        continue;
+      }
 
-      const qrId = match[1];
+      const qrId = qrData.split("/").pop();
+     
+
       const doc = await QRDocument.findOne({ qrId });
-      if (!doc) continue;
+    
+      if (!doc) {
+        continue;
+      }
 
       const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
         file.filename
@@ -113,10 +120,17 @@ exports.verifyQrDocument = async (req, res) => {
   try {
     const qrDoc = await QRDocument.findOne({ qrId });
 
-    if (!qrDoc || !qrDoc.uploadedFileUrl) {
-      return res.status(404).send("Document not found or not uploaded yet.");
+    if (!qrDoc) {
+      console.error(`QRDocument not found for qrId: ${qrId}`);
+      return res.status(404).send("QR Document not found");
     }
 
+    if (!qrDoc.uploadedFileUrl) {
+      console.error(`No uploaded file URL for qrId: ${qrId}`);
+      return res.status(404).send("Document not uploaded yet");
+    }
+
+    console.log(`Redirecting to: ${qrDoc.uploadedFileUrl}`);
     res.redirect(qrDoc.uploadedFileUrl);
   } catch (err) {
     console.error("Verify error:", err);
@@ -133,6 +147,8 @@ exports.uploadAndScanQr = async (req, res) => {
 
   const filepath = file.path;
   const filetype = file.mimetype;
+
+  console.log("Scanning file:", { filepath, filetype });
 
   const qrdata = await checkQR(filepath, filetype);
   if (qrdata) {
