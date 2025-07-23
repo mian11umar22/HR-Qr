@@ -5,13 +5,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
 const qrDocumentRoute = require("./Routes/qrDocumentRoute");
-app.use(
-  cors({
-    origin: "https://hr-qr-frontend.vercel.app", // Allow frontend domain
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-  })
-);
+app.use(cors());
 // Environment config
 dotenv.config();
 
