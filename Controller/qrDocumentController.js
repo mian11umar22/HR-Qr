@@ -25,6 +25,13 @@ exports.generateQrDocuments = async (req, res) => {
     const page = await browser.newPage();
     const pdfPaths = [];
 
+    // Ensure qr codes directory exists
+    const qrCodesDir = path.join(__dirname, "../public/qrcodes");
+    if (!fs.existsSync(qrCodesDir)) {
+      fs.mkdirSync(qrCodesDir, { recursive: true });
+      console.log("✅ Created missing qrcodes folder:", qrCodesDir);
+    }
+
     for (let i = 0; i < count; i++) {
       const qrId = uuidv4();
       const qrUrl = `${req.protocol}://${req.get("host")}/verify/${qrId}`;
@@ -45,11 +52,9 @@ exports.generateQrDocuments = async (req, res) => {
       await page.setContent(html, { waitUntil: "networkidle0" });
 
       const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
-      const filePath = path.join(__dirname, "../public/qrcodes", filename);
+      const filePath = path.join(qrCodesDir, filename);
       fs.writeFileSync(filePath, pdfBuffer);
       pdfPaths.push(fileUrl);
-
-      console.log("Creating QR Document in DB:", { qrId, templateType });
 
       await QRDocument.create({
         qrId,
