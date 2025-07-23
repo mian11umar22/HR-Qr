@@ -10,6 +10,8 @@ const util = require("util");
 const qrcodeReader = require("qrcode-reader");
 const checkQR = require("../utils/qrScanner");
 const unlinkAsync = util.promisify(fs.unlink);
+const PDFMerger = require("pdf-merger-js").default;
+const fetch = require("node-fetch");
 
 // 1. Generate QR Documents
 exports.generateQrDocuments = async (req, res) => {
@@ -178,5 +180,36 @@ exports.verifyQrDocument = async (req, res) => {
   } catch (err) {
     console.error("Verify error:", err);
     res.status(500).send("Internal server error.");
+  }
+};
+exports.mergePdfFiles = async (req, res) => {
+  const { files } = req.body;
+
+  if (!Array.isArray(files) || files.length === 0) {
+    return res.status(400).json({ message: "No PDF URLs provided." });
+  }
+
+  try {
+    const merger = new PDFMerger();
+
+    // Download and add each file
+    for (const url of files) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Failed to fetch: ${url}`);
+      const buffer = await response.buffer();
+      const tempFilePath = `temp-${Date.now()}-${Math.random()}.pdf`;
+      fs.writeFileSync(tempFilePath, buffer);
+      await merger.add(tempFilePath);
+      fs.unlinkSync(tempFilePath); // Clean up
+    }
+
+    const mergedBuffer = await merger.saveAsBuffer();
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=merged.pdf");
+    res.send(mergedBuffer);
+  } catch (err) {
+    console.error("PDF merge failed:", err);
+    res.status(500).json({ message: "PDF merge failed", error: err.message });
   }
 };

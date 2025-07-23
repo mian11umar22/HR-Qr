@@ -11,6 +11,7 @@ router.post(
 );
 router.get("/verify/:qrId", qrDocumentController.verifyQrDocument);
 
+router.post("/merge-pdfs", qrDocumentController.mergePdfFiles);
 router.post(
   "/qr/upload",
   upload.single("file"),

@@ -20,6 +20,8 @@
     "jsqr": "^1.4.0",
     "mongoose": "^8.16.4",
     "multer": "^2.0.2",
+    "node-fetch": "^2.7.0",
+    "pdf-merger-js": "^5.1.2",
     "puppeteer": "^24.14.0",
     "qrcode": "^1.5.4",
     "qrcode-reader": "^1.0.4",
