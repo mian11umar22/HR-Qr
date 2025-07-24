@@ -10,6 +10,12 @@ const checkQR = require("../utils/qrScanner");
 const unlinkAsync = util.promisify(fs.unlink);
 const fetch = require("node-fetch");
 
+// Force HTTPS in production
+const getProtocol = (req) =>
+  process.env.NODE_ENV === "production"
+    ? "https"
+    : req.headers["x-forwarded-proto"] || req.protocol;
+
 // 1. Generate QR Documents
 exports.generateQrDocuments = async (req, res) => {
   const { count, templateType } = req.body;
@@ -25,7 +31,6 @@ exports.generateQrDocuments = async (req, res) => {
     const page = await browser.newPage();
     const pdfPaths = [];
 
-    // Ensure qr codes directory exists
     const qrCodesDir = path.join(__dirname, "../public/qrcodes");
     if (!fs.existsSync(qrCodesDir)) {
       fs.mkdirSync(qrCodesDir, { recursive: true });
@@ -34,13 +39,12 @@ exports.generateQrDocuments = async (req, res) => {
 
     for (let i = 0; i < count; i++) {
       const qrId = uuidv4();
-      const qrUrl = `${req.protocol}://${req.get("host")}/verify/${qrId}`;
+      const protocol = getProtocol(req);
+      const qrUrl = `${protocol}://${req.get("host")}/verify/${qrId}`;
       const qrCode = await generateQrCode(qrUrl);
 
       const filename = `qr-${qrId}.pdf`;
-      const fileUrl = `${req.protocol}://${req.get(
-        "host"
-      )}/qrcodes/${filename}`;
+      const fileUrl = `${protocol}://${req.get("host")}/qrcodes/${filename}`;
       const templateFile =
         templateType === "qr-only" ? "qr_only_template.ejs" : "template.ejs";
 
@@ -85,22 +89,17 @@ exports.uploadScannedDocuments = async (req, res) => {
     for (const file of files) {
       const qrData = await checkQR(file.path, file.mimetype);
       console.log("QR Data:", qrData);
-      if (!qrData) {
-        continue;
-      }
+      if (!qrData) continue;
 
       const qrId = qrData.split("/").pop();
-     
-
       const doc = await QRDocument.findOne({ qrId });
-    
-      if (!doc) {
-        continue;
-      }
+      if (!doc) continue;
 
-      const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
+      const protocol = getProtocol(req);
+      const fileUrl = `${protocol}://${req.get("host")}/uploads/${
         file.filename
       }`;
+
       doc.uploadedFileUrl = fileUrl;
       doc.status = "uploaded";
       await doc.save();
