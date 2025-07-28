@@ -16,11 +16,12 @@ const templates = {
 // ✅ Utility function for environment-aware base URL
 function getBaseUrl(req) {
   if (process.env.NODE_ENV === "production") {
-    return "https://hr-qr-production.up.railway.app"; // <- use your domain here directly
+    return "https://hr-qr-production.up.railway.app";
   } else {
     return `${req.protocol}://${req.get("host")}`;
   }
 }
+
 exports.generatePages = async (req, res) => {
   try {
     const { templateName, numberOfPages } = req.body;
@@ -105,6 +106,12 @@ exports.uploadHRPage = async (req, res) => {
 
     if (!uploadedFiles || uploadedFiles.length === 0) {
       return res.status(400).json({ message: "No files uploaded" });
+    }
+
+    // ✅ Ensure public/uploads directory exists
+    const uploadDir = path.join(__dirname, "../public/uploads");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
 
     const uploaded = [];
