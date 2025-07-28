@@ -13,7 +13,6 @@ const templates = {
   template2: path.join(__dirname, "../templates/simplepage.pdf"),
 };
 
-// ✅ Utility function for environment-aware base URL
 function getBaseUrl(req) {
   if (process.env.NODE_ENV === "production") {
     return "https://hr-qr-production.up.railway.app";
@@ -72,11 +71,11 @@ exports.generatePages = async (req, res) => {
 
     const finalPdfBytes = await finalPdf.save();
     const outputFilename = `merged_qr_pages_${Date.now()}.pdf`;
-    const outputPath = path.join(__dirname, "../temp_qr_pdfs", outputFilename);
 
-    const tempDir = path.join(__dirname, "../temp_qr_pdfs");
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+    const uploadDir = path.join("/tmp", "uploads");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
+    const outputPath = path.join(uploadDir, outputFilename);
     fs.writeFileSync(outputPath, finalPdfBytes);
 
     res.setHeader("Content-Type", "application/pdf");
@@ -84,10 +83,9 @@ exports.generatePages = async (req, res) => {
       "Content-Disposition",
       `attachment; filename=${outputFilename}`
     );
+
     res.sendFile(outputPath, (err) => {
-      if (!err) {
-        fs.unlinkSync(outputPath);
-      } else {
+      if (err) {
         console.error("❌ SendFile error:", err);
       }
     });
@@ -108,8 +106,7 @@ exports.uploadHRPage = async (req, res) => {
       return res.status(400).json({ message: "No files uploaded" });
     }
 
-    // ✅ Ensure public/uploads directory exists
-    const uploadDir = path.join(__dirname, "../public/uploads");
+    const uploadDir = path.join("/tmp", "uploads");
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -234,7 +231,6 @@ exports.replaceUploadedFile = async (req, res) => {
         .json({ message: "Page not found for given QR ID" });
     }
 
-    // Replace first copy or add new one
     if (page.uploadedCopies.length > 0) {
       page.uploadedCopies[0] = {
         fileName: newFileName,

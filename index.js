@@ -16,7 +16,7 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
-/*app.use("/", qrDocumentRoute);*/
+app.use("/uploads", express.static("/tmp/uploads"));
 app.use("/",generatepageroute);
 app.use("/qrcodes", express.static(path.join(__dirname, "public/uploads")));
 app.use(
