@@ -4,7 +4,8 @@ const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
-const qrDocumentRoute = require("./Routes/qrDocumentRoute");
+// const qrDocumentRoute = require("./Routes/qrDocumentRoute");
+const generatepageroute = require("./Routes/GeneratedPageRoute");
 app.use(cors());
 // Environment config
 dotenv.config();
@@ -15,7 +16,8 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
-app.use("/", qrDocumentRoute);
+/*app.use("/", qrDocumentRoute);*/
+app.use("/",generatepageroute);
 app.use("/qrcodes", express.static(path.join(__dirname, "public/uploads")));
 app.use(
   "/uploads",
