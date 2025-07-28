@@ -15,11 +15,12 @@ const templates = {
 
 // ✅ Utility function for environment-aware base URL
 function getBaseUrl(req) {
-  return process.env.NODE_ENV === "production"
-    ? `https://${req.get("host")}`
-    : `${req.protocol}://${req.get("host")}`;
+  if (process.env.NODE_ENV === "production") {
+    return "https://hr-qr-production.up.railway.app"; // <- use your domain here directly
+  } else {
+    return `${req.protocol}://${req.get("host")}`;
+  }
 }
-
 exports.generatePages = async (req, res) => {
   try {
     const { templateName, numberOfPages } = req.body;
