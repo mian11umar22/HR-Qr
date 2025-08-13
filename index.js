@@ -16,14 +16,21 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
-/*app.use("/", qrDocumentRoute);*/
-app.use("/",generatepageroute);
-app.use("/qrcodes", express.static(path.join(__dirname, "public/uploads")));
+ 
+app.use("/", generatepageroute);
+ 
 app.use(
   "/uploads",
-
-  express.static(path.join(__dirname, "public/uploads"))
+  express.static(path.join(__dirname, "public/uploads"), {
+    setHeaders: function (res, filePath) {
+      if (filePath.endsWith(".pdf")) {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline"); // 👈 Add this line
+      }
+    },
+  })
 );
+
 
 mongoose
   .connect(process.env.DB_HOST)

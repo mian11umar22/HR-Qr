@@ -1,0 +1,26 @@
+Files uploaded via API → uploadHRPage receives them from the frontend.
+
+For each file, processFile() runs:
+
+Read file into memory.
+
+Generate a hash (xxHash64) to uniquely identify it.
+
+Check Redis → if hash exists, mark as duplicate.
+
+Check MongoDB → if hash exists in uploadedCopies, mark as duplicate.
+
+If not a duplicate:
+
+Upload file to Cloudinary (done in memory without saving a temp copy).
+
+Scan for QR code (in a worker thread to avoid blocking).
+
+If QR code found → save to MongoDB (GeneratedPage), add hash to Redis cache.
+
+Delete local temp file (cleanup).
+
+Send response with lists: uploaded, duplicates, failed.
+
+Basically:
+Upload → Hash → Check for duplicates (Redis + DB) → Cloudinary upload → QR scan → Save → Respond.

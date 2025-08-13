@@ -15,5 +15,5 @@ router.post(
   upload.none(),
   generatedPageController.replaceUploadedFile
 );
-
+router.get("/stats",generatedPageController.Stats);
 module.exports = router;
